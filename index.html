@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEAKLEVEL – Intelligent Floor-Wise Water Leakage Detection System</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js (optional). If offline, script.js draws simple built-in charts instead. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ================= TOP NAVIGATION ================= -->
+  <header class="topbar">
+    <a href="#dashboard" class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2.5c-.3 0-.6.1-.8.4C9.3 5.4 5 11 5 14.6 5 18.7 8.1 22 12 22s7-3.3 7-7.4c0-3.6-4.3-9.2-6.2-11.7-.2-.3-.5-.4-.8-.4Zm-3 12.7c.4 0 .8.3.8.8 0 1.3 1 2.3 2.3 2.3.4 0 .8.3.8.8s-.4.8-.8.8a3.9 3.9 0 0 1-3.9-3.9c0-.5.4-.8.8-.8Z"/></svg>
+      </span>
+      <span>
+        <span class="brand-name">LEAKLEVEL</span>
+        <span class="brand-sub">Floor-Wise Leak Detection</span>
+      </span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+
+    <nav class="nav" id="nav">
+      <a href="#dashboard" class="nav-link active">Dashboard</a>
+      <a href="#monitoring" class="nav-link">Live Monitoring</a>
+      <a href="#analytics" class="nav-link">Analytics</a>
+      <a href="#records" class="nav-link">Records</a>
+      <a href="#history" class="nav-link">Alert History</a>
+      <a href="#how" class="nav-link">How It Works</a>
+    </nav>
+
+    <div class="sys-status status-normal" id="sysStatus" title="Overall building status">
+      <span class="dot"></span><span id="sysStatusText">System Normal</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= DASHBOARD ================= -->
+    <section id="dashboard" class="section">
+      <div class="hero">
+        <div>
+          <h1>LEAK<span>LEVEL</span></h1>
+          <p class="subtitle">Intelligent Floor-Wise Water Leakage Detection System</p>
+          <p class="sim-note">Software prototype &middot; no physical sensors connected</p>
+          <div class="source-legend" title="Where each number on this dashboard comes from">
+            <span class="src src-seed">Seeded historical data</span>
+            <span class="src src-sim">Simulated live data</span>
+            <span class="src src-real">Real sensor data: not connected</span>
+          </div>
+        </div>
+        <div class="sim-clock">
+          <div><span class="muted">Simulated time</span> <strong id="simTime">0 min</strong></div>
+          <div><span class="muted">Simulation</span> <strong id="simState">Running</strong></div>
+        </div>
+      </div>
+
+      <!-- DEMO MODE -->
+      <div class="card demo-panel">
+        <div class="card-head">
+          <h2>Demo Mode</h2>
+          <span class="tag">For presentation</span>
+        </div>
+        <p class="muted">Each scenario resets the building and then plays a fixed, repeatable sequence.
+          A leak is confirmed only after <strong id="demoConfirmText">3</strong> consecutive abnormal readings.</p>
+        <div class="demo-buttons">
+          <button class="demo-btn" data-scenario="1">
+            <span class="num">1</span>
+            <span><strong>Normal Building</strong><small>All 5 floors normal, no alerts</small></span>
+          </button>
+          <button class="demo-btn" data-scenario="2">
+            <span class="num">2</span>
+            <span><strong>Single Floor Leakage</strong><small>Leak simulated on Floor 3</small></span>
+          </button>
+          <button class="demo-btn" data-scenario="3">
+            <span class="num">3</span>
+            <span><strong>Multiple Floor Abnormality</strong><small>Floors 2 and 4 abnormal</small></span>
+          </button>
+          <button class="demo-btn" data-scenario="4">
+            <span class="num">4</span>
+            <span><strong>Hidden Riser Leak</strong><small>Floors look normal, water balance does not</small></span>
+          </button>
+          <button class="demo-btn" data-scenario="5">
+            <span class="num">5</span>
+            <span><strong>Pump Failure</strong><small>Pressure drops everywhere: not a leak</small></span>
+          </button>
+          <button class="btn btn-outline demo-reset" id="demoReset">&#8634; Reset Building</button>
+        </div>
+        <div class="demo-status" id="demoStatus">No scenario active. Choose a scenario above.</div>
+      </div>
+
+      <!-- BUILDING OVERVIEW -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Building</span>
+          <span class="stat-value small">Residential Block A</span>
+          <span class="stat-sub">Shared riser pipeline</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Floors Monitored</span>
+          <span class="stat-value">5</span>
+          <span class="stat-sub">1 branch line per floor</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Active Sensors</span>
+          <span class="stat-value" id="statSensors">10 / 10</span>
+          <span class="stat-sub">Flow + pressure (simulated)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">System Status</span>
+          <span class="stat-value small" id="statStatus">NORMAL</span>
+          <span class="stat-sub" id="statStatusSub">All floors within limits</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Suspected Leak Events</span>
+          <span class="stat-value" id="statEvents">0</span>
+          <span class="stat-sub" id="statEventsSub">0 logged in history</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Est. Water Loss</span>
+          <span class="stat-value" id="statLoss">0 L</span>
+          <span class="stat-sub">Simulated estimate</span>
+        </div>
+      </div>
+
+      <!-- ALERT BANNER (filled by script.js) -->
+      <div id="alertBanner" class="alert-banner hidden" role="alert"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Building Cross-Section</h2>
+            <span class="tag tag-sim">Simulated live</span>
+          </div>
+          <div class="building" id="buildingDiagram"></div>
+        </div>
+
+        <!-- MAINTENANCE PANEL -->
+        <div class="card">
+          <div class="card-head">
+            <h2>Maintenance Panel</h2>
+            <span class="tag">Simulated workflow</span>
+          </div>
+          <div id="maintenanceList"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- WATER BALANCE -->
+        <div class="card">
+          <div class="card-head">
+            <h2>Water Balance Check</h2>
+            <span class="tag tag-sim">Simulated live</span>
+          </div>
+          <p class="muted small-text">Compares the main meter at the building inlet with the sum of the 5 floor meters. Water that enters but never reaches a floor meter is leaking from the shared riser pipe.</p>
+          <div id="balanceBody"></div>
+        </div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="card">
+          <div class="card-head">
+            <h2>Alert Notifications</h2>
+            <span class="tag tag-sim">Simulated SMS / WhatsApp</span>
+          </div>
+          <div class="phone">
+            <div class="phone-head">
+              <span class="phone-avatar">LL</span>
+              <span><strong>LEAKLEVEL Alerts</strong><small>Maintenance &amp; residents</small></span>
+            </div>
+            <div class="phone-body" id="phoneMessages"></div>
+          </div>
+          <p class="disclaimer">Preview only: no real SMS or WhatsApp messages are sent.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LIVE MONITORING ================= -->
+    <section id="monitoring" class="section">
+      <div class="section-head">
+        <h2>Live Monitoring</h2>
+        <p class="muted">Simulated flow and pressure readings for each floor's branch line. One reading = one simulated minute.</p>
+      </div>
+
+      <div class="card controls">
+        <div class="control-group">
+          <button id="btnPause" class="btn btn-primary">&#10074;&#10074; Pause</button>
+          <button id="btnReset" class="btn btn-outline">&#8634; Reset</button>
+        </div>
+        <div class="control-group">
+          <label class="field-inline">Floor
+            <select id="leakFloor"></select>
+          </label>
+          <label class="field-inline">Severity
+            <select id="leakSeverity">
+              <option value="major">Major</option>
+              <option value="moderate">Moderate</option>
+            </select>
+          </label>
+          <button id="btnLeak" class="btn btn-danger">Trigger Leak</button>
+          <button id="btnStopLeak" class="btn btn-outline">Stop Leak</button>
+          <button id="btnSensor" class="btn btn-outline" title="Simulate a sensor node going offline or coming back online">Toggle Sensor Link</button>
+        </div>
+        <div class="control-group">
+          <span class="field-inline">Building faults</span>
+          <button id="btnRiser" class="btn btn-outline" title="Leak in the shared riser pipe between Floor 3 and Floor 4">Toggle Riser Leak</button>
+          <button id="btnPump" class="btn btn-outline" title="Booster pump problem: pressure drops on every floor">Toggle Pump Fault</button>
+        </div>
+      </div>
+
+      <div class="floor-grid" id="floorGrid"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Manual Sensor Test</h2>
+            <span class="tag">Testing</span>
+          </div>
+          <p class="muted">Override a floor's readings with your own values to test the detection logic.</p>
+          <div class="form-grid">
+            <label>Floor
+              <select id="manualFloor"></select>
+            </label>
+            <label>Flow (L/min)
+              <input type="number" id="manualFlow" step="0.1" min="0" max="100" value="18.5">
+            </label>
+            <label>Pressure (bar)
+              <input type="number" id="manualPressure" step="0.05" min="0" max="10" value="2.8">
+            </label>
+          </div>
+          <div class="btn-row">
+            <button id="btnApplyManual" class="btn btn-primary">Apply Values</button>
+            <button id="btnReleaseManual" class="btn btn-outline">Release Override</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Detection Settings</h2>
+            <span class="tag">Demo thresholds</span>
+          </div>
+          <div class="form-grid">
+            <label>Flow rise for abnormal (%)
+              <input type="number" id="setFlowRise" min="5" max="100" step="1">
+            </label>
+            <label>Pressure drop for abnormal (%)
+              <input type="number" id="setPressureDrop" min="5" max="60" step="1">
+            </label>
+            <label>Consecutive readings to confirm
+              <input type="number" id="setConfirm" min="1" max="10" step="1">
+            </label>
+            <label>Update interval (seconds)
+              <input type="number" id="setInterval" min="1" max="10" step="1">
+            </label>
+          </div>
+          <label class="check-row">
+            <input type="checkbox" id="setAutoIsolate">
+            <span><strong>Auto shut-off valve</strong><small>Close the floor's valve automatically after a leak is confirmed (simulated actuator)</small></span>
+          </label>
+          <h3 class="mini-title">Normal baseline per floor</h3>
+          <div class="baseline-table" id="baselineTable"></div>
+          <div class="btn-row">
+            <button id="btnSaveSettings" class="btn btn-primary">Save Settings</button>
+            <button id="btnDefaultSettings" class="btn btn-outline">Restore Defaults</button>
+          </div>
+          <p class="disclaimer">These are demonstration thresholds, not validated real-world engineering limits.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ANALYTICS ================= -->
+    <section id="analytics" class="section">
+      <div class="section-head">
+        <h2>Analytics</h2>
+        <p class="muted">Historical analytics use the seeded sample dataset. Live analytics update with every simulated reading.</p>
+        <p class="muted hidden" id="chartFallbackNote">Chart.js could not be loaded (offline). Showing built-in simple charts.</p>
+      </div>
+
+      <!-- HISTORICAL ANALYTICS (SEEDED) -->
+      <div class="sub-head">
+        <h3>Historical Analytics &middot; Last 7 Days</h3>
+        <span class="tag tag-seed">Seeded historical</span>
+      </div>
+      <div class="stats-grid hist-stats" id="histStats"></div>
+
+      <div class="chart-grid">
+        <div class="card chart-wide">
+          <div class="card-head">
+            <h3 class="chart-title">Building Water Usage – 24 Hours (L/hour)</h3>
+            <label class="field-inline">Day
+              <select id="histDay"></select>
+            </label>
+          </div>
+          <div class="chart-box"><canvas id="chartHistDay"></canvas></div>
+          <p class="chart-note" id="histDayNote"></p>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Daily Consumption – 7 Days (L)</h3>
+          <div class="chart-box"><canvas id="chartHistWeek"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Floor Comparison – 7-Day Consumption &amp; Loss (L)</h3>
+          <div class="chart-box"><canvas id="chartHistFloors"></canvas></div>
+        </div>
+      </div>
+
+      <!-- SMART ANALYTICS -->
+      <div class="sub-head">
+        <h3>Smart Analytics</h3>
+        <span class="tag tag-seed">Learned from seeded history</span>
+      </div>
+
+      <div class="card">
+        <div class="card-head wrap">
+          <h3 class="chart-title">Self-Learning Baseline vs Fixed Threshold (flow, L/min)</h3>
+          <label class="field-inline">Floor
+            <select id="adaptFloor">
+              <option value="1">Floor 1</option>
+              <option value="2">Floor 2</option>
+              <option value="3">Floor 3</option>
+              <option value="4">Floor 4</option>
+              <option value="5">Floor 5</option>
+            </select>
+          </label>
+        </div>
+        <div class="adapt-layout">
+          <div>
+            <div class="chart-box"><canvas id="chartAdaptive"></canvas></div>
+            <p class="chart-note" id="adaptNote"></p>
+          </div>
+          <div id="adaptCompare"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3 class="chart-title">Night-Flow Leak Check (02:00–04:00)</h3>
+            <span class="tag tag-seed">Seeded</span>
+          </div>
+          <p class="muted small-text">Almost nobody uses water at night, so steady flow at 2–4 AM is a classic sign of a hidden leak. Red cells are more than 2&times; the floor's typical night flow.</p>
+          <div class="table-wrap"><table class="data-table heat" id="nightTable"></table></div>
+          <p class="chart-note" id="nightNote"></p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3 class="chart-title">Leak Risk Ranking</h3>
+            <span class="tag">Seeded + live</span>
+          </div>
+          <p class="muted small-text">Ranks floors for preventive maintenance using past leaks, warnings, abnormal nights, recent live alerts and usage above expected.</p>
+          <div id="riskList"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head wrap">
+          <h3 class="chart-title">Cost &amp; Environmental Impact</h3>
+          <div class="filters">
+            <label class="field-inline">Water &#8377;/kL
+              <input type="number" id="costWater" min="1" max="1000" step="1">
+            </label>
+            <label class="field-inline">Electricity &#8377;/kWh
+              <input type="number" id="costPower" min="1" max="100" step="0.5">
+            </label>
+          </div>
+        </div>
+        <div id="costBody"></div>
+        <p class="disclaimer">Illustrative assumptions: 0.3 kWh per kL for pumping and treatment, 0.71 kg CO&#8322; per kWh (approximate Indian grid average). Adjust the tariffs for your city. Estimates only.</p>
+      </div>
+
+      <!-- LIVE ANALYTICS (SIMULATED) -->
+      <div class="sub-head">
+        <h3>Live Analytics &middot; Current Session</h3>
+        <span class="tag tag-sim">Simulated live</span>
+      </div>
+      <div class="chart-grid">
+        <div class="card">
+          <h3 class="chart-title">Water Flow Comparison (L/min)</h3>
+          <div class="chart-box"><canvas id="chartFlowBar"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Pressure Comparison (bar)</h3>
+          <div class="chart-box"><canvas id="chartPressureBar"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Flow Trend Over Time (L/min)</h3>
+          <div class="chart-box"><canvas id="chartFlowTrend"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Pressure Trend Over Time (bar)</h3>
+          <div class="chart-box"><canvas id="chartPressureTrend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- WATER USAGE AND LOSS -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Live Session Water Usage &amp; Loss</h2>
+          <span class="tag tag-sim">Simulated live</span>
+        </div>
+        <div class="water-grid">
+          <div class="water-stat">
+            <span class="stat-label">Total Est. Consumption</span>
+            <span class="stat-value" id="waterTotal">0 L</span>
+          </div>
+          <div class="water-stat loss">
+            <span class="stat-label">Est. Loss During Leakage</span>
+            <span class="stat-value" id="waterLoss">0 L</span>
+          </div>
+          <div class="water-stat">
+            <span class="stat-label">Loss Share</span>
+            <span class="stat-value" id="waterShare">0%</span>
+          </div>
+        </div>
+        <h3 class="mini-title">Floor-wise consumption</h3>
+        <div id="consumptionBars" class="consumption-bars"></div>
+        <p class="disclaimer">Estimated values from simulated readings only. They are not measured real-world consumption or savings.</p>
+      </div>
+    </section>
+
+    <!-- ================= RECORDS ================= -->
+    <section id="records" class="section">
+      <div class="section-head">
+        <h2>Building Records</h2>
+        <p class="muted">Baseline data, leakage history, maintenance records and sensor health.</p>
+      </div>
+
+      <!-- DATA SOURCES -->
+      <div class="source-grid">
+        <div class="source-card seed">
+          <span class="src src-seed">Seeded historical data</span>
+          <strong id="srcSeedCount">0 records</strong>
+          <p>Preloaded sample records for the past 7 days, including past incidents and maintenance. Generated with a fixed seed so they are identical on every run. Illustrative only.</p>
+        </div>
+        <div class="source-card sim">
+          <span class="src src-sim">Simulated live data</span>
+          <strong id="srcSimCount">0 readings</strong>
+          <p>Generated in your browser by the JavaScript simulation every few seconds. Drives the floor cards, live charts and alerts.</p>
+        </div>
+        <div class="source-card real">
+          <span class="src src-real">Real sensor data</span>
+          <strong>Not connected</strong>
+          <p>Measurements from installed flow and pressure sensors. No hardware is connected in this prototype, so no real data is shown.</p>
+        </div>
+      </div>
+
+      <!-- BASELINE DATA -->
+      <div class="card table-card">
+        <div class="card-head padded">
+          <h2>Baseline Data</h2>
+          <span class="tag tag-seed">Seeded</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Floor</th>
+                <th>Normal Flow (L/min)</th>
+                <th>Normal Pressure (bar)</th>
+                <th>Expected Usage (L/day)</th>
+                <th>Daily Avg, Last 7 Days (L)</th>
+                <th>Baseline Status</th>
+              </tr>
+            </thead>
+            <tbody id="baselineBody"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer padded">Illustrative values, not measurements from a real building. Actual baselines should be calibrated using installed sensors. Normal flow is the peak-hour reference; expected daily usage applies a typical residential demand pattern.</p>
+      </div>
+
+      <!-- LEAKAGE HISTORY -->
+      <div class="card table-card">
+        <div class="card-head padded">
+          <h2>Leakage History</h2>
+          <span class="tag tag-seed">Seeded</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Incident</th>
+                <th>Detected</th>
+                <th>Floor</th>
+                <th>Alert Type</th>
+                <th>Peak Flow</th>
+                <th>Min Pressure</th>
+                <th>Duration</th>
+                <th>Est. Loss</th>
+                <th>Cause Found</th>
+              </tr>
+            </thead>
+            <tbody id="incidentBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INCIDENT REPLAY -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Incident Replay (5-minute readings)</h2>
+          <label class="field-inline">Incident
+            <select id="incidentSelect"></select>
+          </label>
+        </div>
+        <div id="incidentSummary" class="incident-summary"></div>
+        <div class="table-wrap short">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Floor</th>
+                <th>Flow (L/min)</th>
+                <th>Pressure (bar)</th>
+                <th>Expected</th>
+                <th>Status</th>
+                <th>Phase</th>
+              </tr>
+            </thead>
+            <tbody id="incidentDetailBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MAINTENANCE RECORDS -->
+      <div class="card table-card">
+        <div class="card-head padded">
+          <h2>Maintenance Records</h2>
+          <span class="tag">Seeded + live session</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Record</th>
+                <th>Floor</th>
+                <th>Alert</th>
+                <th>Detected</th>
+                <th>Acknowledged</th>
+                <th>Resolved</th>
+                <th>Response</th>
+                <th>Team / Action</th>
+                <th>Outcome</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="maintRecordsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SENSOR HEALTH -->
+      <div class="card table-card">
+        <div class="card-head padded">
+          <h2>Sensor Health</h2>
+          <span class="tag tag-sim">Live status simulated</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Sensor</th>
+                <th>Floor</th>
+                <th>Type</th>
+                <th>Link Status</th>
+                <th>Last Reading</th>
+                <th>Signal</th>
+                <th>Uptime (7 d)</th>
+                <th>Last Calibrated</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="sensorBody"></tbody>
+          </table>
+        </div>
+        <p class="disclaimer padded">Sensor IDs, signal, uptime and calibration dates are seeded sample metadata for proposed hardware. Use "Toggle Sensor Link" in Live Monitoring to simulate a sensor fault.</p>
+      </div>
+
+      <!-- RECORDS EXPLORER -->
+      <div class="card table-card">
+        <div class="card-head padded wrap">
+          <h2>Historical Sensor Records</h2>
+          <div class="filters">
+            <select id="fltFloor" aria-label="Filter by floor">
+              <option value="all">All floors</option>
+              <option value="1">Floor 1</option>
+              <option value="2">Floor 2</option>
+              <option value="3">Floor 3</option>
+              <option value="4">Floor 4</option>
+              <option value="5">Floor 5</option>
+            </select>
+            <select id="fltStatus" aria-label="Filter by status">
+              <option value="all">All statuses</option>
+              <option value="Normal">Normal</option>
+              <option value="Warning">Warning</option>
+              <option value="Leak Suspected">Leak Suspected</option>
+            </select>
+            <select id="fltRes" aria-label="Filter by resolution">
+              <option value="all">Hourly + 5-minute</option>
+              <option value="Hourly">Hourly</option>
+              <option value="5-minute">5-minute</option>
+            </select>
+            <button id="btnCsv" class="btn btn-outline btn-sm">Download CSV</button>
+          </div>
+        </div>
+        <p class="muted padded" id="explorerCount"></p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Floor</th>
+                <th>Flow (L/min)</th>
+                <th>Pressure (bar)</th>
+                <th>Status</th>
+                <th>Resolution</th>
+                <th>Incident</th>
+              </tr>
+            </thead>
+            <tbody id="explorerBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ALERT HISTORY ================= -->
+    <section id="history" class="section">
+      <div class="section-head row">
+        <div>
+          <h2>Alert History <span class="tag tag-sim">Simulated live</span></h2>
+          <p class="muted">Alerts raised during your live simulation sessions. Saved in your browser (localStorage), so they survive a page refresh. Past seeded incidents are in Records &rarr; Leakage History.</p>
+        </div>
+        <button id="btnClearHistory" class="btn btn-outline">Clear History</button>
+      </div>
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Floor</th>
+                <th>Flow (L/min)</th>
+                <th>Pressure (bar)</th>
+                <th>Alert Type</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= HOW IT WORKS ================= -->
+    <section id="how" class="section">
+      <div class="section-head">
+        <h2>How LEAKLEVEL Works</h2>
+        <p class="muted">From sensor reading to maintenance inspection.</p>
+      </div>
+
+      <div class="card">
+        <div class="flow-diagram">
+          <div class="flow-step pair">
+            <div class="flow-node">Water Flow Sensor</div>
+            <span class="plus">+</span>
+            <div class="flow-node">Pressure Sensor</div>
+          </div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node">Sensor Data Collection</div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node">Data Processing</div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node accent">Leakage Detection Algorithm</div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node">Floor-Wise Identification</div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node danger">Dashboard Alert</div>
+          <div class="flow-arrow">&darr;</div>
+          <div class="flow-node">Maintenance Inspection</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Detection Rules</h2><span class="tag">Rule-based</span></div>
+        <ol class="rules">
+          <li>Each floor has a <strong>normal baseline</strong> flow and pressure.</li>
+          <li><strong>Flow is abnormal</strong> if it rises more than <strong id="ruleFlow">30</strong>% above baseline (water escaping makes more water flow).</li>
+          <li><strong>Pressure is abnormal</strong> if it drops more than <strong id="rulePressure">20</strong>% below baseline (a leak lets pressure escape).</li>
+          <li><span class="badge badge-normal">NORMAL</span> both readings within limits.</li>
+          <li><span class="badge badge-warning">WARNING</span> only one indicator abnormal, or both abnormal but not yet confirmed.</li>
+          <li><span class="badge badge-leak">LEAK SUSPECTED</span> both flow and pressure abnormal for <strong id="ruleConfirm">3</strong> consecutive readings. This avoids false alarms from a single odd reading.</li>
+        </ol>
+        <p class="disclaimer">These are demonstration thresholds, not validated real-world engineering limits. The system identifies a <em>suspected</em> floor or pipeline branch; physical inspection is needed to confirm the actual leak location.</p>
+      </div>
+
+      <div class="card table-card">
+        <div class="card-head padded"><h2>Smart Diagnosis: What Is Actually Wrong?</h2><span class="tag">Innovation</span></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>What the sensors see</th><th>LEAKLEVEL's diagnosis</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="wrap-cell">One floor: flow up <strong>and</strong> pressure down, for 3 readings</td><td><span class="pill pill-leak">Floor leak</span></td><td class="wrap-cell">Alert maintenance, auto-close that floor's valve</td></tr>
+              <tr><td class="wrap-cell">All floor meters normal, but main meter &gt; sum of floor meters</td><td><span class="pill pill-leak">Shared riser leak</span></td><td class="wrap-cell">Inspect the common pipe; pressure pattern estimates the segment</td></tr>
+              <tr><td class="wrap-cell">Pressure down on many floors at once, no extra flow anywhere</td><td><span class="pill pill-warning">Pump / supply issue</span></td><td class="wrap-cell">Send pump team, not plumbers to every floor</td></tr>
+              <tr><td class="wrap-cell">Steady flow at 2–4 AM above the floor's learned night level</td><td><span class="pill pill-warning">Hidden night leak</span></td><td class="wrap-cell">Flag floor in risk ranking for inspection</td></tr>
+              <tr><td class="wrap-cell">No data arriving from a floor's sensor node</td><td><span class="pill pill-offline">Sensor fault</span></td><td class="wrap-cell">Detection paused, technician checks the sensor</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="disclaimer padded">Rule-based demonstration logic. Thresholds are illustrative, not validated engineering limits.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>Future: Physical IoT Hardware</h2><span class="tag">Proposed</span></div>
+          <ul class="list">
+            <li>Hall-effect water flow sensor (e.g. YF-S201) on each floor's branch line</li>
+            <li>Pressure transducer on each floor's branch line</li>
+            <li>ESP32 / Arduino microcontroller collecting readings</li>
+            <li>Wi-Fi / MQTT to send data to a cloud or local server</li>
+            <li>Main water meter at the building inlet for the water balance check</li>
+            <li>Motorised / solenoid valve on each floor for automatic shut-off</li>
+            <li>SMS / app notifications to maintenance staff</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Now: Software Simulation</h2><span class="tag tag-ok">Implemented</span></div>
+          <ul class="list">
+            <li>Seeded 7-day sample history (about 1,000 records) with past incidents and maintenance</li>
+            <li>JavaScript generates realistic live flow and pressure readings</li>
+            <li>Small fluctuations during normal operation</li>
+            <li>Leaks simulated by raising flow and lowering pressure</li>
+            <li>Same rule-based detection logic real sensors would feed</li>
+            <li>Simulated sensor faults (offline sensor link)</li>
+            <li>Dashboard alerts, history, charts and maintenance workflow</li>
+            <li>No hardware connected: no real sensor data is claimed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    LEAKLEVEL &middot; Hackathon software prototype &middot; Simulated data for demonstration only
+  </footer>
+
+  <div class="toast-container" id="toasts" aria-live="polite"></div>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
